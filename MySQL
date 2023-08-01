@@ -1,0 +1,93 @@
+create database	e_commerce;
+use e_commerce;
+select * from olist_customers_dataset;
+select * from olist_geolocation_dataset;
+select * from olist_order_items_dataset;
+select * from olist_order_payments_dataset;
+select * from olist_order_reviews_dataset;
+select * from olist_orders_dataset;
+select * from olist_products_dataset;
+select * from olist_sellers_dataset;
+select * from product_category_name_translation;
+
+select count(*) from olist_customers_dataset;
+select count(*) from product_category_name_translation;
+
+-- KPI 1 - Weekday vs weekend payment statistics
+
+select 
+case 
+when dayofweek(order_purchase_timestamp) IN (1,7) Then "Weekend"
+else "Weekday"
+end as 'day_type',
+count(distinct od.order_id) as total_orders,
+round(sum(payment_value), 2)as total_payment_amount
+from olist_orders_dataset od
+left join olist_order_payments_dataset opd on od.order_id = opd.order_id
+group by day_type;
+
+-- KPI 2 -  Number of Orders with review score 5 and payment type as credit card
+
+select	review_score as Review_score,
+count(re.order_id) as no_of_orders,
+payment_type as Payment_type
+from olist_order_reviews_dataset re 
+join olist_order_payments_dataset pa on re.order_id = pa.order_id 
+where review_score = 5 and	payment_type="credit_card";
+
+-- KPI 3 - Average number of delivery days taken for pet_shop
+
+select round(avg(datediff(order_delivered_customer_date, order_approved_at))) as avg_days 
+from olist_orders_dataset 
+inner join olist_order_items_dataset
+on olist_orders_dataset.order_id = olist_order_items_dataset.order_id
+inner join olist_products_dataset 
+on olist_order_items_dataset.product_id = olist_products_dataset.product_id 
+where product_category_name="pet_shop";
+
+-- KPI 4 - Average price and payment values from customers of sao paulo city
+
+SELECT
+    cd.customer_city AS City,
+    ROUND(AVG(opd.payment_value), 2) AS Average_payment_value,
+    ROUND(AVG(oid.price), 2) AS Average_price
+FROM
+    olist_customers_dataset AS cd
+    LEFT JOIN olist_orders_dataset AS od ON cd.customer_id = od.customer_id
+    LEFT JOIN olist_order_payments_dataset AS opd ON od.order_id = opd.order_id
+    LEFT JOIN olist_order_items_dataset AS oid ON od.order_id = oid.order_id
+WHERE cd.customer_city = 'Sao Paulo'
+GROUP BY cd.customer_city;
+
+-- KPI 5 - Average shipping days Vs review scores
+
+SELECT
+    r.review_score,
+    round(AVG(DATEDIFF(o.order_delivered_customer_date, o.order_purchase_timestamp))) AS shipping_days
+FROM olist_orders_dataset o
+inner JOIN olist_order_reviews_dataset r ON o.order_id = r.order_id
+WHERE o.order_status = 'delivered'
+GROUP BY r.review_score
+ORDER BY r.review_score ASC;
+
+-- KPI 6 Total payment
+
+select round(sum(payment_value)) as Total_payment_value from olist_order_payments_dataset;
+
+-- KPI 7 Total price
+
+select round(sum(price)) as Total_price from olist_order_items_dataset;
+
+-- KPI 8 Total orders
+
+select count(order_id) as Total_orders from olist_orders_dataset;
+
+-- KPI 9 Total customers
+
+select count(customer_id) as Total_customers from olist_customers_dataset;
+
+-- KPI 6 Total sellers
+
+select count(seller_id) as Total_sellers from olist_sellers_dataset;
+
+set sql_safe_updates=0;
